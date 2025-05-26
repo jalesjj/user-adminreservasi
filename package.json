@@ -1,0 +1,39 @@
+{
+  "name": "bestevilla-admin",
+  "version": "1.0.0",
+  "description": "BesteVilla Admin Panel with Oracle DB",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "setup-db": "node setup-database.js"
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "compression": "^1.8.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "express-validator": "^7.2.1",
+    "fs": "^0.0.1-security",
+    "helmet": "^7.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "multer": "^1.4.5-lts.1",
+    "oracledb": "^6.8.0",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "villa",
+    "booking",
+    "admin",
+    "oracle",
+    "express"
+  ],
+  "author": "Kelompok 8",
+  "license": "MIT"
+}

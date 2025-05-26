@@ -1,0 +1,1086 @@
+<!-- admin/dashboard.html - UPDATED VERSION -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - BesteVilla</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8f9fa;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 250px;
+            background: linear-gradient(135deg, #1e1e1e 0%, #2c2c2c 100%);
+            color: white;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #444;
+        }
+
+        .sidebar-header h3 {
+            color: #f35525;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            color: #ccc;
+        }
+
+        .sidebar-menu {
+            list-style: none;
+            padding: 20px 0;
+        }
+
+        .sidebar-menu li {
+            margin-bottom: 5px;
+        }
+
+        .sidebar-menu a {
+            display: block;
+            padding: 15px 25px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar-menu a:hover,
+        .sidebar-menu a.active {
+            background-color: rgba(243, 85, 37, 0.1);
+            border-left-color: #f35525;
+            color: #f35525;
+        }
+
+        .sidebar-menu i {
+            margin-right: 10px;
+            width: 20px;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 250px;
+            min-height: 100vh;
+            background-color: #f8f9fa;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: white;
+            padding: 15px 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background: #f35525;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            color: white;
+        }
+
+        .logout-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: #c82333;
+        }
+
+        /* Content Area */
+        .content-area {
+            padding: 30px;
+        }
+
+        .page-title {
+            margin-bottom: 30px;
+        }
+
+        .page-title h2 {
+            color: #1e1e1e;
+            font-weight: 700;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+        }
+
+        .stat-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-right: 20px;
+        }
+
+        .stat-icon.reservasi { background: #e3f2fd; color: #1976d2; }
+        .stat-icon.kritik { background: #f3e5f5; color: #7b1fa2; }
+        .stat-icon.kontak { background: #e8f5e8; color: #388e3c; }
+        .stat-icon.pending { background: #fff3e0; color: #f57c00; }
+
+        .stat-info h3 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            color: #1e1e1e;
+        }
+
+        .stat-info p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+
+        /* Tables */
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .table-header {
+            background: #f35525;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .btn-add {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-add:hover {
+            background: rgba(255,255,255,0.3);
+            color: white;
+        }
+
+        .table-responsive {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table thead th {
+            background: #f8f9fa;
+            border: none;
+            font-weight: 600;
+            color: #1e1e1e;
+            padding: 15px;
+        }
+
+        .table tbody td {
+            padding: 15px;
+            border-color: #eee;
+            vertical-align: middle;
+        }
+
+        /* Action Buttons */
+        .btn-action {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-right: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-accept { background: #28a745; color: white; }
+        .btn-reject { background: #dc3545; color: white; }
+        .btn-edit { background: #007bff; color: white; }
+        .btn-delete { background: #6c757d; color: white; }
+        .btn-view { background: #17a2b8; color: white; }
+
+        .btn-action:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        /* Status Badges */
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-accepted { background: #d4edda; color: #155724; }
+        .status-rejected { background: #f8d7da; color: #721c24; }
+
+        /* Modal Styles */
+        .modal-header {
+            background: #f35525;
+            color: white;
+        }
+
+        .modal-header .btn-close {
+            filter: invert(1);
+        }
+
+        /* Bukti DP Preview */
+        .bukti-dp-thumbnail {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .bukti-dp-thumbnail:hover {
+            transform: scale(1.1);
+        }
+
+        .bukti-dp-modal img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+        }
+
+        /* Loading */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading i {
+            font-size: 40px;
+            color: #f35525;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Content Sections */
+        .content-section {
+            display: none;
+        }
+
+        .content-section.active {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 200px;
+            }
+            
+            .main-content {
+                margin-left: 200px;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h3>BesteVilla</h3>
+            <p>Admin Panel</p>
+        </div>
+        <ul class="sidebar-menu">
+            <li><a href="#" data-section="dashboard" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+            <li><a href="#" data-section="reservasi"><i class="fas fa-calendar-check"></i> Reservasi</a></li>
+            <li><a href="#" data-section="kritik-saran"><i class="fas fa-comments"></i> Kritik & Saran</a></li>
+            <li><a href="#" data-section="kontak"><i class="fas fa-envelope"></i> Kontak</a></li>
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="user-info">
+                <div class="user-avatar">
+                    <i class="fas fa-user"></i>
+                </div>
+                <div>
+                    <strong id="admin-name">Admin</strong>
+                    <br><small class="text-muted">Administrator</small>
+                </div>
+            </div>
+            <button class="logout-btn" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-area">
+            <!-- Dashboard Section -->
+            <div id="dashboard-section" class="content-section active">
+                <div class="page-title">
+                    <h2><i class="fas fa-tachometer-alt"></i> Dashboard</h2>
+                    <p>Selamat datang di panel admin BesteVilla</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon reservasi">
+                            <i class="fas fa-calendar-check"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="total-reservasi">0</h3>
+                            <p>Total Reservasi</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon pending">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="pending-reservasi">0</h3>
+                            <p>Pending Reservasi</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon kritik">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="total-kritik">0</h3>
+                            <p>Kritik & Saran</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon kontak">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div class="stat-info">
+                            <h3 id="total-kontak">0</h3>
+                            <p>Pesan Kontak</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reservasi Section -->
+            <div id="reservasi-section" class="content-section">
+                <div class="page-title">
+                    <h2><i class="fas fa-calendar-check"></i> Manajemen Reservasi</h2>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3 class="table-title">Daftar Reservasi</h3>
+                    </div>
+                    <div class="loading" id="reservasi-loading">
+                        <i class="fas fa-spinner"></i>
+                        <p>Memuat data reservasi...</p>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nama</th>
+                                    <th>Villa</th>
+                                    <th>Check In</th>
+                                    <th>Check Out</th>
+                                    <th>Bukti DP</th>
+                                    <th>Status</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reservasi-table">
+                                <!-- Data akan dimuat dari Oracle DB -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kritik Saran Section -->
+            <div id="kritik-saran-section" class="content-section">
+                <div class="page-title">
+                    <h2><i class="fas fa-comments"></i> Manajemen Kritik & Saran</h2>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3 class="table-title">Daftar Kritik & Saran</h3>
+                    </div>
+                    <div class="loading" id="kritik-loading">
+                        <i class="fas fa-spinner"></i>
+                        <p>Memuat data kritik & saran...</p>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nama</th>
+                                    <th>Judul</th>
+                                    <th>Kritik/Saran</th>
+                                    <th>Tanggal</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kritik-table">
+                                <!-- Data akan dimuat dari Oracle DB -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kontak Section -->
+            <div id="kontak-section" class="content-section">
+                <div class="page-title">
+                    <h2><i class="fas fa-envelope"></i> Manajemen Kontak</h2>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <h3 class="table-title">Daftar Pesan Kontak</h3>
+                    </div>
+                    <div class="loading" id="kontak-loading">
+                        <i class="fas fa-spinner"></i>
+                        <p>Memuat data kontak...</p>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nama</th>
+                                    <th>Email</th>
+                                    <th>Subject</th>
+                                    <th>Pesan</th>
+                                    <th>Tanggal</th>
+                                    <th>Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="kontak-table">
+                                <!-- Data akan dimuat dari Oracle DB -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal untuk View Bukti DP -->
+    <div class="modal fade" id="buktiDPModal" tabindex="-1" aria-labelledby="buktiDPModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="buktiDPModalLabel">
+                        <i class="fas fa-receipt"></i> Bukti DP - <span id="customer-name"></span>
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div id="bukti-dp-content">
+                        <!-- Bukti DP akan dimuat di sini -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <a id="download-link" class="btn btn-primary" target="_blank">
+                        <i class="fas fa-download"></i> Download
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if user is logged in
+            checkAuthStatus();
+            
+            // Load dashboard data
+            loadDashboardData();
+            
+            // Setup navigation
+            setupNavigation();
+        });
+
+        function checkAuthStatus() {
+            const token = localStorage.getItem('adminToken');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+            
+            // Verify token with server
+            fetch('/admin/verify', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Token invalid');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.admin) {
+                    document.getElementById('admin-name').textContent = data.admin.username || 'Admin';
+                }
+            })
+            .catch(error => {
+                console.error('Auth error:', error);
+                localStorage.removeItem('adminToken');
+                window.location.href = 'login.html';
+            });
+        }
+
+        function loadDashboardData() {
+            // Load statistics
+            fetch('/admin/stats', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('total-reservasi').textContent = data.totalReservasi || 0;
+                document.getElementById('pending-reservasi').textContent = data.pendingReservasi || 0;
+                document.getElementById('total-kritik').textContent = data.totalKritik || 0;
+                document.getElementById('total-kontak').textContent = data.totalKontak || 0;
+            })
+            .catch(error => {
+                console.error('Error loading stats:', error);
+            });
+        }
+
+        function setupNavigation() {
+            const menuLinks = document.querySelectorAll('.sidebar-menu a');
+            const sections = document.querySelectorAll('.content-section');
+
+            menuLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    
+                    // Remove active class from all links
+                    menuLinks.forEach(l => l.classList.remove('active'));
+                    
+                    // Add active class to clicked link
+                    this.classList.add('active');
+                    
+                    // Hide all sections
+                    sections.forEach(section => section.classList.remove('active'));
+                    
+                    // Show target section
+                    const targetSection = this.dataset.section;
+                    document.getElementById(targetSection + '-section').classList.add('active');
+                    
+                    // Load section data
+                    loadSectionData(targetSection);
+                });
+            });
+        }
+
+        function loadSectionData(section) {
+            switch(section) {
+                case 'reservasi':
+                    loadReservasi();
+                    break;
+                case 'kritik-saran':
+                    loadKritikSaran();
+                    break;
+                case 'kontak':
+                    loadKontak();
+                    break;
+            }
+        }
+
+        function loadReservasi() {
+            const loading = document.getElementById('reservasi-loading');
+            const table = document.getElementById('reservasi-table');
+            
+            loading.style.display = 'block';
+            table.innerHTML = '';
+
+            fetch('/admin/reservasi', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch reservasi data');
+                }
+                return response.json();
+            })
+            .then(data => {
+                loading.style.display = 'none';
+                
+                if (data.length === 0) {
+                    table.innerHTML = '<tr><td colspan="8" class="text-center">Tidak ada data reservasi</td></tr>';
+                    return;
+                }
+
+                data.forEach(reservasi => {
+                    const row = document.createElement('tr');
+                    
+                    let statusBadge = '';
+                    if (reservasi.status === 'pending') {
+                        statusBadge = '<span class="status-badge status-pending">Pending</span>';
+                    } else if (reservasi.status === 'accepted') {
+                        statusBadge = '<span class="status-badge status-accepted">Diterima</span>';
+                    } else if (reservasi.status === 'rejected') {
+                        statusBadge = '<span class="status-badge status-rejected">Ditolak</span>';
+                    }
+
+                    // Bukti DP display
+                    let buktiDPDisplay = 'Tidak ada';
+                    if (reservasi.buktiDP) {
+                        const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(reservasi.buktiDP);
+                        if (isImage) {
+                            buktiDPDisplay = `
+                                <img src="/uploads/${reservasi.buktiDP}" 
+                                     class="bukti-dp-thumbnail" 
+                                     onclick="viewBuktiDP('${reservasi.buktiDP}', '${reservasi.nama}')"
+                                     alt="Bukti DP" title="Klik untuk melihat">
+                            `;
+                        } else {
+                            buktiDPDisplay = `
+                                <i class="fas fa-file-pdf" style="font-size: 24px; color: #dc3545; cursor: pointer;" 
+                                   onclick="viewBuktiDP('${reservasi.buktiDP}', '${reservasi.nama}')" 
+                                   title="Klik untuk melihat PDF"></i>
+                            `;
+                        }
+                    }
+
+                    let actionButtons = '';
+                    if (reservasi.status === 'pending') {
+                        actionButtons = `
+                            <button class="btn-action btn-accept" onclick="updateReservasiStatus(${reservasi.id}, 'accepted')">
+                                <i class="fas fa-check"></i> Terima
+                            </button>
+                            <button class="btn-action btn-reject" onclick="updateReservasiStatus(${reservasi.id}, 'rejected')">
+                                <i class="fas fa-times"></i> Tolak
+                            </button>
+                        `;
+                    }
+                    
+                    actionButtons += `
+                        <button class="btn-action btn-view" onclick="viewReservasiDetail(${reservasi.id})">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn-action btn-delete" onclick="deleteReservasi(${reservasi.id})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    `;
+
+                    row.innerHTML = `
+                        <td>${reservasi.id}</td>
+                        <td>${reservasi.nama}</td>
+                        <td>${reservasi.pilihanVila}</td>
+                        <td>${formatDate(reservasi.checkIn)}</td>
+                        <td>${formatDate(reservasi.checkOut)}</td>
+                        <td>${buktiDPDisplay}</td>
+                        <td>${statusBadge}</td>
+                        <td>${actionButtons}</td>
+                    `;
+                    
+                    table.appendChild(row);
+                });
+            })
+            .catch(error => {
+                loading.style.display = 'none';
+                console.error('Error loading reservasi:', error);
+                table.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Error loading data</td></tr>';
+            });
+        }
+
+        function viewBuktiDP(filename, customerName) {
+            const modal = new bootstrap.Modal(document.getElementById('buktiDPModal'));
+            const content = document.getElementById('bukti-dp-content');
+            const nameSpan = document.getElementById('customer-name');
+            const downloadLink = document.getElementById('download-link');
+            
+            nameSpan.textContent = customerName;
+            downloadLink.href = `/uploads/${filename}`;
+            
+            const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(filename);
+            
+            if (isImage) {
+                content.innerHTML = `
+                    <img src="/uploads/${filename}" 
+                         alt="Bukti DP" 
+                         style="max-width: 100%; height: auto; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                `;
+            } else {
+                content.innerHTML = `
+                    <div style="padding: 40px; text-align: center;">
+                        <i class="fas fa-file-pdf" style="font-size: 80px; color: #dc3545; margin-bottom: 20px;"></i>
+                        <h5>File PDF</h5>
+                        <p class="text-muted">Klik tombol Download untuk melihat file PDF</p>
+                        <p><strong>Nama File:</strong> ${filename}</p>
+                    </div>
+                `;
+            }
+            
+            modal.show();
+        }
+
+        function loadKritikSaran() {
+            const loading = document.getElementById('kritik-loading');
+            const table = document.getElementById('kritik-table');
+            
+            loading.style.display = 'block';
+            table.innerHTML = '';
+
+            fetch('/admin/kritik-saran', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch kritik saran data');
+                }
+                return response.json();
+            })
+            .then(data => {
+                loading.style.display = 'none';
+                
+                if (data.length === 0) {
+                    table.innerHTML = '<tr><td colspan="6" class="text-center">Tidak ada data kritik & saran</td></tr>';
+                    return;
+                }
+
+                data.forEach(kritik => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${kritik.id}</td>
+                        <td>${kritik.nama}</td>
+                        <td>${kritik.judul}</td>
+                        <td>${truncateText(kritik.kritikSaran, 50)}</td>
+                        <td>${formatDate(kritik.tanggal)}</td>
+                        <td>
+                            <button class="btn-action btn-edit" onclick="editKritikSaran(${kritik.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-action btn-delete" onclick="deleteKritikSaran(${kritik.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    table.appendChild(row);
+                });
+            })
+            .catch(error => {
+                loading.style.display = 'none';
+                console.error('Error loading kritik saran:', error);
+                table.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading data</td></tr>';
+            });
+        }
+
+        function loadKontak() {
+            const loading = document.getElementById('kontak-loading');
+            const table = document.getElementById('kontak-table');
+            
+            loading.style.display = 'block';
+            table.innerHTML = '';
+
+            fetch('/admin/kontak', {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch kontak data');
+                }
+                return response.json();
+            })
+            .then(data => {
+                loading.style.display = 'none';
+                
+                if (data.length === 0) {
+                    table.innerHTML = '<tr><td colspan="7" class="text-center">Tidak ada data kontak</td></tr>';
+                    return;
+                }
+
+                data.forEach(kontak => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${kontak.id}</td>
+                        <td>${kontak.nama}</td>
+                        <td>${kontak.alamatEmail}</td>
+                        <td>${kontak.subject}</td>
+                        <td>${truncateText(kontak.message, 50)}</td>
+                        <td>${formatDate(kontak.tanggal)}</td>
+                        <td>
+                            <button class="btn-action btn-edit" onclick="editKontak(${kontak.id})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-action btn-delete" onclick="deleteKontak(${kontak.id})">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    `;
+                    table.appendChild(row);
+                });
+            })
+            .catch(error => {
+                loading.style.display = 'none';
+                console.error('Error loading kontak:', error);
+                table.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Error loading data</td></tr>';
+            });
+        }
+
+        // Reservasi Actions
+        function updateReservasiStatus(id, status) {
+            if (!confirm(`Apakah Anda yakin ingin ${status === 'accepted' ? 'menerima' : 'menolak'} reservasi ini?`)) {
+                return;
+            }
+
+            fetch(`/admin/reservasi/${id}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+                },
+                body: JSON.stringify({ status: status })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to update status');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert('Status reservasi berhasil diupdate');
+                loadReservasi();
+                loadDashboardData(); // Refresh stats
+            })
+            .catch(error => {
+                console.error('Error updating status:', error);
+                alert('Error updating status');
+            });
+        }
+
+        function viewReservasiDetail(id) {
+            // Implement view reservation detail functionality
+            alert('View detail reservasi functionality will be implemented');
+        }
+
+        function deleteReservasi(id) {
+            if (!confirm('Apakah Anda yakin ingin menghapus reservasi ini?')) {
+                return;
+            }
+
+            fetch(`/admin/reservasi/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to delete reservasi');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert('Reservasi berhasil dihapus');
+                loadReservasi();
+                loadDashboardData(); // Refresh stats
+            })
+            .catch(error => {
+                console.error('Error deleting reservasi:', error);
+                alert('Error deleting reservasi');
+            });
+        }
+
+        // Kritik Saran Actions
+        function editKritikSaran(id) {
+            // Implement edit kritik saran functionality
+            alert('Edit kritik saran functionality will be implemented');
+        }
+
+        function deleteKritikSaran(id) {
+            if (!confirm('Apakah Anda yakin ingin menghapus kritik & saran ini?')) {
+                return;
+            }
+
+            fetch(`/admin/kritik-saran/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to delete kritik saran');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert('Kritik & saran berhasil dihapus');
+                loadKritikSaran();
+                loadDashboardData(); // Refresh stats
+            })
+            .catch(error => {
+                console.error('Error deleting kritik saran:', error);
+                alert('Error deleting kritik saran');
+            });
+        }
+
+        // Kontak Actions
+        function editKontak(id) {
+            // Implement edit kontak functionality
+            alert('Edit kontak functionality will be implemented');
+        }
+
+        function deleteKontak(id) {
+            if (!confirm('Apakah Anda yakin ingin menghapus pesan kontak ini?')) {
+                return;
+            }
+
+            fetch(`/admin/kontak/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('adminToken')}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to delete kontak');
+                }
+                return response.json();
+            })
+            .then(data => {
+                alert('Pesan kontak berhasil dihapus');
+                loadKontak();
+                loadDashboardData(); // Refresh stats
+            })
+            .catch(error => {
+                console.error('Error deleting kontak:', error);
+                alert('Error deleting kontak');
+            });
+        }
+
+        // Utility Functions
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('id-ID');
+        }
+
+        function truncateText(text, maxLength) {
+            if (!text) return '-';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        }
+
+        function logout() {
+            if (confirm('Apakah Anda yakin ingin logout?')) {
+                localStorage.removeItem('adminToken');
+                window.location.href = 'login.html';
+            }
+        }
+    </script>
+</body>
+</html>
