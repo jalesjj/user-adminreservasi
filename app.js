@@ -1,111 +1,155 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const oracledb = require('oracledb');
-const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
-const midtransClient = require('midtrans-client'); // Import Midtrans Client
+// ===============================================
+// BACKEND EXPRESS.JS - SISTEM RESERVASI VILLA BESTEVILLA
+// ===============================================
+// File ini adalah server backend yang menangani semua API endpoint untuk:
+// 1. Reservasi villa dengan sistem status (pending/accepted/rejected)
+// 2. Admin panel dengan autentikasi JWT
+// 3. Integrasi payment gateway Midtrans
+// 4. Sistem pengecekan ketersediaan villa
+// 5. Management kontak dan kritik saran
 
+// ===============================================
+// BAGIAN 1: IMPORT DEPENDENCIES
+// ===============================================
+const express = require('express');           // Framework web server
+const bodyParser = require('body-parser');    // Middleware untuk parsing request body
+const oracledb = require('oracledb');         // Driver Oracle Database
+const multer = require('multer');             // Middleware untuk file upload
+const path = require('path');                 // Utilities untuk file path
+const fs = require('fs');                     // File system operations
+const jwt = require('jsonwebtoken');          // JSON Web Token untuk autentikasi
+const bcrypt = require('bcrypt');             // Password hashing
+const midtransClient = require('midtrans-client'); // Midtrans payment gateway client
+
+// ===============================================
+// BAGIAN 2: KONFIGURASI APLIKASI
+// ===============================================
 const app = express();
-const PORT = process.env.PORT || 2207;
+const PORT = process.env.PORT || 2207; // Port server, default 2207
 
-// Konfigurasi Oracle
+// ===============================================
+// BAGIAN 3: KONFIGURASI DATABASE ORACLE
+// ===============================================
+// Konfigurasi koneksi ke Oracle Database
 const dbConfig = {
-    user: 'C##JALES',
-    password: 'jales123',
-    connectString: 'localhost/orcl'
+    user: 'C##JALES',              // Username database Oracle
+    password: 'jales123',          // Password database
+    connectString: 'localhost/orcl' // Connection string (host/service_name)
 };
 
-// JWT Secret
+// ===============================================
+// BAGIAN 4: KONFIGURASI JWT (JSON WEB TOKEN)
+// ===============================================
+// Secret key untuk signing JWT tokens - PENTING: ganti dengan key yang lebih aman di production
 const JWT_SECRET = 'bestevilla-super-secret-jwt-key-2024';
 
-// --- Konfigurasi Midtrans ---
-// Pastikan ini ada di bagian atas bersama konfigurasi lain
+// ===============================================
+// BAGIAN 5: KONFIGURASI MIDTRANS PAYMENT GATEWAY
+// ===============================================
+// Setup Midtrans client untuk payment processing
 let snap = new midtransClient.Snap({
-    isProduction: false, // Set ke true jika sudah production
-    serverKey: 'SB-Mid-server-TY4yQMLqtfHkDspOXihruzW-', // Ganti dengan Server Key Midtrans Anda
-    clientKey: 'SB-Mid-client-4s6U-2lGi11T3znh' // Ganti dengan Client Key Midtrans Anda
+    isProduction: false, // Set ke true jika sudah production (live environment)
+    serverKey: 'SB-Mid-server-JznZpwIa4JjyvETA_yWcRh-R', // Server Key dari Midtrans dashboard
+    clientKey: 'SB-Mid-client-wDhW2aU40eVy31-g'          // Client Key dari Midtrans dashboard
 });
-// --- End Konfigurasi Midtrans ---
+// CATATAN: Ganti dengan credentials Midtrans yang sebenarnya
 
-// Middleware
+// ===============================================
+// BAGIAN 6: MIDDLEWARE SETUP
+// ===============================================
+// Static file serving - untuk file CSS, JS, images di folder public
 app.use(express.static('public'));
 app.use(express.static('vendor'));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
 
-// ==============================
-// KONFIGURASI UPLOAD FILE
-// ==============================
+// Body parser middleware - untuk parsing form data dan JSON
+app.use(bodyParser.urlencoded({ extended: true })); // Untuk form data
+app.use(bodyParser.json());                         // Untuk JSON data
+
+// ===============================================
+// BAGIAN 7: KONFIGURASI FILE UPLOAD (MULTER)
+// ===============================================
+// Setup multer untuk handling file upload (bukti DP)
 const storage = multer.diskStorage({
+    // Tentukan folder tujuan upload
     destination: (req, file, cb) => {
         const uploadPath = 'public/uploads/';
-        fs.mkdirSync(uploadPath, { recursive: true });
+        fs.mkdirSync(uploadPath, { recursive: true }); // Buat folder jika belum ada
         cb(null, uploadPath);
     },
+    // Tentukan nama file (dengan timestamp untuk uniqueness)
     filename: (req, file, cb) => {
         const uniqueName = Date.now() + '_' + file.originalname;
         cb(null, uniqueName);
     }
 });
-const upload = multer({ storage });
+const upload = multer({ storage }); // Inisialisasi multer dengan konfigurasi storage
 
-// ==============================
-// ORIGINAL ENDPOINTS (FORM WEBSITE)
-// ==============================
-
-// Endpoint RESERVASI
+// ===============================================
+// BAGIAN 8: ENDPOINT RESERVASI (PUBLIC)
+// ===============================================
+// Endpoint untuk menangani form reservasi dari website
 app.post('/reservasi', upload.single('buktiDP'), async (req, res) => {
     try {
+        // Logging untuk debugging
         console.log("Form data received:", req.body);
         console.log("File received:", req.file);
 
+        // Ekstrak data dari request body
         const {
             nama, alamat, alamatEmail, nomorHP,
             jumlahOrang, checkIn, jamCheckIn,
             checkOut, jamCheckOut, pilihanVila
         } = req.body;
 
+        // Handle file upload - ambil filename jika ada file yang diupload
         const buktiDP = req.file ? req.file.filename : null;
 
+        // Logging untuk debugging
         console.log("pilihanVila:", pilihanVila);
         console.log("buktiDP:", buktiDP);
 
+        // ===============================================
+        // BAGIAN 9: DATABASE INSERT RESERVASI
+        // ===============================================
         const connection = await oracledb.getConnection(dbConfig);
 
-        // Tambahkan 'status' ke INSERT statement, defaultnya 'pending'
+        // Insert data reservasi ke database
+        // PENTING: Status default adalah 'pending'
         await connection.execute(
             `INSERT INTO RESERVASI
             (nama, alamat, alamatEmail, nomorHP, jumlahOrang, checkIn, jamCheckIn, checkOut, jamCheckOut, pilihanVila, buktiDP, status)
             VALUES (:nama, :alamat, :alamatEmail, :nomorHP, :jumlahOrang, TO_DATE(:checkIn, 'YYYY-MM-DD'), :jamCheckIn, TO_DATE(:checkOut, 'YYYY-MM-DD'), :jamCheckOut, :pilihanVila, :buktiDP, 'pending')`,
             {
                 nama, alamat, alamatEmail, nomorHP,
-                jumlahOrang: parseInt(jumlahOrang),
+                jumlahOrang: parseInt(jumlahOrang), // Convert string ke number
                 checkIn, jamCheckIn,
                 checkOut, jamCheckOut,
                 pilihanVila,
                 buktiDP
             },
-            { autoCommit: true }
+            { autoCommit: true } // Commit otomatis setelah insert
         );
 
-        await connection.close();
+        await connection.close(); // Tutup koneksi database
         res.status(201).send('Reservasi berhasil ditambahkan');
+        
     } catch (error) {
         console.error("Error in reservasi endpoint:", error);
         res.status(500).send('Gagal menambahkan reservasi');
     }
 });
 
-// KRITIK SARAN ENDPOINT
+// ===============================================
+// BAGIAN 10: ENDPOINT KRITIK SARAN (PUBLIC)
+// ===============================================
+// Endpoint untuk menangani form kritik dan saran
 app.post('/kritiksaran', async (req, res) => {
     const { nama, judul, kritikSaran } = req.body;
 
     try {
         const conn = await oracledb.getConnection(dbConfig);
 
+        // Insert kritik saran ke database
         await conn.execute(
             `INSERT INTO KRITIKSARAN (nama, judul, kritikSaran)
             VALUES (:nama, :judul, :kritikSaran)`,
@@ -115,19 +159,24 @@ app.post('/kritiksaran', async (req, res) => {
 
         await conn.close();
         res.status(201).send('Kritik dan saran berhasil dikirim');
+        
     } catch (err) {
         console.error(err);
         res.status(500).send('Gagal mengirim kritik dan saran');
     }
 });
 
-// Endpoint KONTAK
+// ===============================================
+// BAGIAN 11: ENDPOINT KONTAK (PUBLIC)
+// ===============================================
+// POST endpoint - untuk menangani form kontak
 app.post('/kontakkami', async (req, res) => {
     const { nama, alamatEmail, subject, message } = req.body;
 
     try {
         const conn = await oracledb.getConnection(dbConfig);
 
+        // Insert pesan kontak ke database dengan timestamp
         await conn.execute(
             `INSERT INTO KONTAK (nama, alamatEmail, subject, message, created_at)
             VALUES (:nama, :alamatEmail, :subject, :message, SYSDATE)`,
@@ -137,12 +186,14 @@ app.post('/kontakkami', async (req, res) => {
 
         await conn.close();
         res.status(201).send('Pesan berhasil dikirim');
+        
     } catch (err) {
         console.error(err);
         res.status(500).send('Gagal mengirim pesan');
     }
 });
 
+// GET endpoint - untuk mengambil data kontak (mungkin untuk admin)
 app.get('/kontakkami', async (req, res) => {
     try {
         const conn = await oracledb.getConnection(dbConfig);
@@ -155,19 +206,25 @@ app.get('/kontakkami', async (req, res) => {
     }
 });
 
-// ==============================
-// ENDPOINT CHECK AVAILABILITY - UPDATED dengan Status Logic
-// ==============================
+// ===============================================
+// BAGIAN 12: ENDPOINT CHECK AVAILABILITY - LOGIKA STATUS UPDATED
+// ===============================================
+// Endpoint untuk mengecek ketersediaan villa berdasarkan tanggal
+// LOGIKA PENTING: Hanya reservasi dengan status 'accepted' yang membuat villa unavailable ;;
 app.get('/check-availability', async (req, res) => {
     try {
         console.log('Check availability request received:', req.query);
         const { checkInDate, checkOutDate } = req.query;
 
+        // ===============================================
+        // VALIDASI INPUT
+        // ===============================================
         if (!checkInDate || !checkOutDate) {
             console.log('Missing required dates');
             return res.status(400).json({ error: 'Tanggal check-in dan check-out diperlukan' });
         }
 
+        // Validasi format tanggal (harus YYYY-MM-DD)
         if (!/^\d{4}-\d{2}-\d{2}$/.test(checkInDate) || !/^\d{4}-\d{2}-\d{2}$/.test(checkOutDate)) {
             console.log('Invalid date format');
             return res.status(400).json({ error: 'Format tanggal harus YYYY-MM-DD' });
@@ -178,11 +235,15 @@ app.get('/check-availability', async (req, res) => {
             const connection = await oracledb.getConnection(dbConfig);
             console.log('Database connection established');
 
-            // ===== UPDATED QUERY: Hanya cek reservasi dengan status 'accepted' =====
+            // ===============================================
+            // QUERY DATABASE - UPDATED LOGIC
+            // ===============================================
+            // PENTING: Hanya cek reservasi dengan status 'accepted';;
+            // Query ini mencari overlapping dates dengan reservasi yang sudah accepted ; terima yang dicek
             const result = await connection.execute(
                 `SELECT pilihanVila
                 FROM RESERVASI
-                WHERE STATUS = 'accepted'
+                WHERE STATUS = 'accepted' 
                 AND (
                     (TO_DATE(:checkInDate, 'YYYY-MM-DD') BETWEEN checkIn AND checkOut - 1)
                     OR
@@ -201,17 +262,23 @@ app.get('/check-availability', async (req, res) => {
             await connection.close();
             console.log('Database connection closed');
 
+            // ===============================================
+            // PROCESS RESULTS
+            // ===============================================
+            // Villa yang punya reservasi ACCEPTED = UNAVAILABLE
             let vilaJalesBooked = false;
             let vilaAkmalBooked = false;
             let vilaRizaldiBooked = false;
 
+            // Loop melalui hasil query untuk marking villa yang unavailable
             if (result.rows && result.rows.length > 0) {
                 for (const reservation of result.rows) {
                     const villa = reservation.PILIHANVILA;
                     console.log('Found accepted booking for villa:', villa);
 
+                    // Mark villa sebagai booked berdasarkan nama villa
                     if (villa === 'Vila Jales') {
-                        vilaJalesBooked = true;
+                        vilaJalesBooked = true; // 🚫 Villa jadi UNAVAILABLE
                     } else if (villa === 'Vila Akmal') {
                         vilaAkmalBooked = true;
                     } else if (villa === 'Vila Rizaldi') {
@@ -220,14 +287,23 @@ app.get('/check-availability', async (req, res) => {
                 }
             }
 
+            // ===============================================
+            // PREPARE RESPONSE
+            // ===============================================
+            // Response format: true = available, false = unavailable
+            // RESPONSE: true = AVAILABLE, false = UNAVAILABLE
             const response = {
-                vilajales: !vilaJalesBooked,
+                vilajales: !vilaJalesBooked,    // Negasi: jika booked = false, jika tidak booked = true
                 vilaakmal: !vilaAkmalBooked,
                 vilarizaldi: !vilaRizaldiBooked
             };
 
             console.log('Sending response:', response);
 
+            // ===============================================
+            // SET CACHE HEADERS
+            // ===============================================
+            // Headers untuk mencegah caching agar data selalu fresh
             res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
             res.setHeader('Pragma', 'no-cache');
             res.setHeader('Expires', '0');
@@ -237,10 +313,12 @@ app.get('/check-availability', async (req, res) => {
 
         } catch (dbError) {
             console.error('Database error:', dbError);
+            
+            // Handle specific Oracle error - table tidak exists
             if (dbError.message && dbError.message.includes('ORA-00942')) {
                 console.log('Table does not exist - sending fallback response');
                 return res.status(200).json({
-                    vilajales: true,
+                    vilajales: true,  // Semua villa available jika table tidak ada
                     vilaakmal: true,
                     vilarizaldi: true
                 });
@@ -254,15 +332,19 @@ app.get('/check-availability', async (req, res) => {
     }
 });
 
-// ==============================
-// ENDPOINT GET UNAVAILABLE DATES - UPDATED dengan Status Logic
-// ==============================
+// ===============================================
+// BAGIAN 13: ENDPOINT GET UNAVAILABLE DATES - UPDATED LOGIC
+// ===============================================
+// Endpoint untuk mengambil daftar tanggal yang unavailable untuk ditampilkan di tabel
+// LOGIKA: ENDPOINT INI YANG MENENTUKAN DATA TABEL "TANGGAL TIDAK TERSEDIA" ;;
 app.get('/unavailable-dates', async (req, res) => {
     try {
         console.log('Request for unavailable dates received');
         const connection = await oracledb.getConnection(dbConfig);
 
-        // ===== UPDATED QUERY: Hanya ambil reservasi dengan status 'accepted' =====
+
+        // INI KODE KUNCI: HANYA AMBIL STATUS 'ACCEPTED' 
+        // Query ini MENGABAIKAN reservasi dengan status 'pending' atau 'rejected'
         const result = await connection.execute(
             `SELECT
                 pilihanVila,
@@ -277,20 +359,25 @@ app.get('/unavailable-dates', async (req, res) => {
 
         await connection.close();
 
+        // Struktur data berdasarkan nama villa
+        // Hanya reservasi ACCEPTED yang masuk ke tabel
         const unavailableDates = {
             'Vila Jales': [],
             'Vila Akmal': [],
             'Vila Rizaldi': []
         };
 
+        // Loop melalui hasil query dan group berdasarkan villa
         result.rows.forEach(booking => {
             const villa = booking.PILIHANVILA;
             const checkIn = new Date(booking.CHECKINDATE);
             const checkOut = new Date(booking.CHECKOUTDATE);
 
+            // Format tanggal ke DD/MM/YYYY untuk display
             const formattedCheckIn = formatDate(checkIn);
             const formattedCheckOut = formatDate(checkOut);
 
+            // Tambahkan ke array villa yang sesuai
             if (unavailableDates[villa]) {
                 unavailableDates[villa].push({
                     checkIn: formattedCheckIn,
@@ -301,6 +388,7 @@ app.get('/unavailable-dates', async (req, res) => {
 
         console.log('Unavailable dates (accepted only):', unavailableDates);
 
+        // Set anti-cache headers
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
@@ -313,49 +401,60 @@ app.get('/unavailable-dates', async (req, res) => {
     }
 });
 
-// Helper function untuk format tanggal
+// ===============================================
+// BAGIAN 14: HELPER FUNCTION - FORMAT TANGGAL
+// ===============================================
+// Fungsi helper untuk memformat tanggal ke format DD/MM/YYYY
 function formatDate(date) {
     const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // +1 karena month dimulai dari 0
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
 }
 
-// ==============================
-// MIDTRANS PAYMENT ENDPOINTS
-// ==============================
+// ===============================================
+// BAGIAN 15: MIDTRANS PAYMENT ENDPOINTS
+// ===============================================
 
-// Route tampilkan form pembayaran (jika Anda memiliki file payment.html)
+// Route untuk menampilkan halaman pembayaran
 app.get('/pembayaran', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'payment.html')); // Pastikan payment.html ada di folder public
+    // Serve file payment.html dari folder public
+    res.sendFile(path.join(__dirname, 'public', 'payment.html')); 
 });
 
-// Endpoint API pembayaran Midtrans
+// ===============================================
+// BAGIAN 16: API ENDPOINT UNTUK MEMBUAT TRANSAKSI MIDTRANS
+// ===============================================
 app.post('/api/payment', async (req, res) => {
     const { order_id, gross_amount, customer_name, customer_email, customer_phone } = req.body;
 
-    // Validasi input
+    // ===============================================
+    // VALIDASI INPUT PAYMENT
+    // ===============================================
     if (!order_id || !gross_amount || !customer_name || !customer_email || !customer_phone) {
         return res.status(400).json({ message: 'Semua field wajib diisi' });
     }
 
-    // Pastikan gross_amount adalah angka
+    // Validasi gross_amount adalah angka valid
     const amount = parseInt(gross_amount);
     if (isNaN(amount) || amount <= 0) {
         return res.status(400).json({ message: 'Jumlah pembayaran tidak valid' });
     }
 
+    // ===============================================
+    // SETUP PARAMETER MIDTRANS
+    // ===============================================
     const parameter = {
         transaction_details: {
-            order_id: order_id,
-            gross_amount: amount
+            order_id: order_id,        // ID transaksi unik
+            gross_amount: amount       // Total amount
         },
         customer_details: {
             first_name: customer_name,
             email: customer_email,
             phone: customer_phone
-        },
-        // Opsional: Item details jika Anda ingin menampilkan detail produk di Midtrans
+        }
+        // Opsional: Item details untuk detail pembayaran
         // item_details: [
         //     {
         //         id: 'VILLA-BESTEVILLA-001',
@@ -368,24 +467,35 @@ app.post('/api/payment', async (req, res) => {
 
     try {
         console.log('Creating Midtrans transaction with parameters:', parameter);
+        
+        // ===============================================
+        // CREATE MIDTRANS TRANSACTION
+        // ===============================================
         const transaction = await snap.createTransaction(parameter);
         console.log('Midtrans transaction created:', transaction);
+        
+        // Return token dan redirect URL ke frontend
         res.json({
             token: transaction.token,
             redirect_url: transaction.redirect_url
         });
+        
     } catch (error) {
         console.error("Error creating Midtrans transaction:", error.message);
         res.status(500).json({ message: 'Gagal membuat transaksi Midtrans', error: error.message });
     }
 });
 
-// Optional: Midtrans notification handler (untuk update status pembayaran secara real-time)
+// ===============================================
+// BAGIAN 17: MIDTRANS NOTIFICATION HANDLER
+// ===============================================
+// Endpoint untuk menerima notifikasi dari Midtrans tentang status pembayaran
 app.post('/api/midtrans-notification', async (req, res) => {
     try {
         const notification = req.body;
         console.log('Midtrans Notification Received:', notification);
 
+        // Verifikasi notifikasi dari Midtrans
         const statusResponse = await snap.transaction.notification(notification);
 
         const orderId = statusResponse.order_id;
@@ -394,82 +504,87 @@ app.post('/api/midtrans-notification', async (req, res) => {
 
         console.log(`Transaction ID: ${orderId}, Status: ${transactionStatus}, Fraud: ${fraudStatus}`);
 
-        // Anda bisa mengupdate status reservasi di database Anda di sini
-        // Misalnya, jika transactionStatus === 'capture' dan fraudStatus === 'accept'
-        // Anda bisa mengubah status reservasi terkait menjadi 'paid' atau 'completed'
+        // ===============================================
+        // LOGIC UPDATE STATUS BERDASARKAN MIDTRANS RESPONSE
+        // ===============================================
+        // Di sini Anda bisa mengupdate status reservasi di database
+        // Contoh logika (commented out):
+        /*
+        let connection;
+        try {
+            connection = await oracledb.getConnection(dbConfig);
+            let newStatus = '';
+            
+            // Tentukan status baru berdasarkan transaction status
+            if (transactionStatus == 'capture') {
+                if (fraudStatus == 'accept') {
+                    newStatus = 'paid';
+                }
+            } else if (transactionStatus == 'settlement') {
+                newStatus = 'paid';
+            } else if (transactionStatus == 'cancel' || transactionStatus == 'expire' || transactionStatus == 'deny') {
+                newStatus = 'cancelled';
+            } else if (transactionStatus == 'pending') {
+                newStatus = 'pending_payment';
+            }
 
-        // Contoh: Logika update status di database (Anda harus menyesuaikannya dengan tabel dan logika Anda)
-        // let connection;
-        // try {
-        //     connection = await oracledb.getConnection(dbConfig);
-        //     let newStatus = '';
-        //     if (transactionStatus == 'capture') {
-        //         if (fraudStatus == 'accept') {
-        //             newStatus = 'paid';
-        //         }
-        //     } else if (transactionStatus == 'settlement') {
-        //         newStatus = 'paid';
-        //     } else if (transactionStatus == 'cancel' || transactionStatus == 'expire' || transactionStatus == 'deny') {
-        //         newStatus = 'cancelled';
-        //     } else if (transactionStatus == 'pending') {
-        //         newStatus = 'pending_payment';
-        //     }
+            if (newStatus) {
+                await connection.execute(
+                    `UPDATE RESERVASI SET STATUS = :newStatus, UPDATED_AT = SYSDATE WHERE ORDER_ID = :orderId`,
+                    { newStatus, orderId },
+                    { autoCommit: true }
+                );
+                console.log(`Order ${orderId} updated to status: ${newStatus}`);
+            }
+        } catch (dbError) {
+            console.error('Error updating DB from Midtrans notification:', dbError);
+        } finally {
+            if (connection) {
+                await connection.close();
+            }
+        }
+        */
 
-        //     if (newStatus) {
-        //         await connection.execute(
-        //             `UPDATE RESERVASI SET STATUS = :newStatus, UPDATED_AT = SYSDATE WHERE ORDER_ID = :orderId`,
-        //             { newStatus, orderId },
-        //             { autoCommit: true }
-        //         );
-        //         console.log(`Order ${orderId} updated to status: ${newStatus}`);
-        //     }
-        // } catch (dbError) {
-        //     console.error('Error updating DB from Midtrans notification:', dbError);
-        // } finally {
-        //     if (connection) {
-        //         await connection.close();
-        //     }
-        // }
-
-        res.status(200).send('OK');
+        res.status(200).send('OK'); // Response wajib untuk Midtrans
+        
     } catch (error) {
         console.error('Error processing Midtrans notification:', error.message);
         res.status(500).send('Error');
     }
 });
 
-
-// ==============================
-// ADMIN AUTHENTICATION & MIDDLEWARE
-// ==============================
-
-// Middleware untuk verifikasi admin token
+// ===============================================
+// BAGIAN 18: ADMIN AUTHENTICATION MIDDLEWARE
+// ===============================================
+// Middleware untuk memverifikasi JWT token admin
 function verifyAdminToken(req, res, next) {
-    const token = req.headers.authorization?.split(' ')[1];
+    // Ambil token dari header Authorization
+    const token = req.headers.authorization?.split(' ')[1]; // Format: "Bearer <token>"
 
     if (!token) {
         return res.status(401).json({ error: 'Token tidak ditemukan' });
     }
 
     try {
+        // Verify dan decode JWT token
         const decoded = jwt.verify(token, JWT_SECRET);
-        req.admin = decoded;
-        next();
+        req.admin = decoded; // Simpan data admin ke request object
+        next(); // Lanjut ke handler berikutnya
     } catch (error) {
         return res.status(401).json({ error: 'Token tidak valid' });
     }
 }
 
-// ==============================
-// DEBUG ENDPOINTS
-// ==============================
+// ===============================================
+// BAGIAN 19: DEBUG ENDPOINTS
+// ===============================================
 
-// Debug: Test database connection
+// Debug endpoint untuk test koneksi database
 app.get('/debug/db-test', async (req, res) => {
     let connection;
     try {
         connection = await oracledb.getConnection(dbConfig);
-        const result = await connection.execute('SELECT SYSDATE FROM dual');
+        const result = await connection.execute('SELECT SYSDATE FROM dual'); // Query test sederhana
 
         res.json({
             success: true,
@@ -489,13 +604,18 @@ app.get('/debug/db-test', async (req, res) => {
     }
 });
 
-// Fixed GET version of setup-admin untuk browser testing
+// ===============================================
+// BAGIAN 20: SETUP ADMIN ENDPOINT (DEBUG)
+// ===============================================
+// Endpoint untuk setup admin user pertama kali
 app.get('/debug/setup-admin', async (req, res) => {
     let connection;
     try {
         connection = await oracledb.getConnection(dbConfig);
 
-        // 1. DROP existing table if exists (untuk clean setup)
+        // ===============================================
+        // 1. DROP EXISTING TABLES (CLEAN SETUP)
+        // ===============================================
         try {
             await connection.execute(`DROP TABLE admin_users CASCADE CONSTRAINTS`);
             console.log('🗑️ Dropped existing admin_users table');
@@ -510,7 +630,9 @@ app.get('/debug/setup-admin', async (req, res) => {
             console.log('ℹ️ admin_login_logs table might not exist:', dropError.message);
         }
 
-        // 2. Create admin_users table - SIMPLIFIED VERSION
+        // ===============================================
+        // 2. CREATE ADMIN_USERS TABLE
+        // ===============================================
         await connection.execute(`
             CREATE TABLE admin_users (
                 id NUMBER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
@@ -522,7 +644,9 @@ app.get('/debug/setup-admin', async (req, res) => {
         `);
         console.log('✅ Table admin_users created');
 
-        // 3. Create admin_login_logs table
+        // ===============================================
+        // 3. CREATE ADMIN_LOGIN_LOGS TABLE
+        // ===============================================
         await connection.execute(`
             CREATE TABLE admin_login_logs (
                 id NUMBER GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
@@ -534,7 +658,9 @@ app.get('/debug/setup-admin', async (req, res) => {
         `);
         console.log('✅ Table admin_login_logs created');
 
-        // 4. Add status column to reservasi if not exists
+        // ===============================================
+        // 4. ADD STATUS COLUMNS TO RESERVASI TABLE
+        // ===============================================
         try {
             await connection.execute(`
                 ALTER TABLE RESERVASI ADD (
@@ -548,8 +674,11 @@ app.get('/debug/setup-admin', async (req, res) => {
             console.log('ℹ️ Reservasi table might already have admin columns:', alterError.message);
         }
 
-        // 5. Hash password dan insert admin user - SIMPLIFIED
-        const passwordHash = await bcrypt.hash('admin123', 10);
+        // ===============================================
+        // 5. CREATE DEFAULT ADMIN USER
+        // ===============================================
+        // Hash password menggunakan bcrypt
+        const passwordHash = await bcrypt.hash('admin123', 10); // Salt rounds = 10
 
         const result = await connection.execute(
             `INSERT INTO admin_users (username, password_hash, is_active)
@@ -560,14 +689,18 @@ app.get('/debug/setup-admin', async (req, res) => {
             }
         );
 
-        await connection.commit();
+        await connection.commit(); // Commit semua perubahan
 
-        // 6. Verify admin user created - SIMPLIFIED QUERY
+        // ===============================================
+        // 6. VERIFY ADMIN USER CREATED
+        // ===============================================
         const verifyResult = await connection.execute(
             `SELECT id, username, is_active, created_at FROM admin_users WHERE username = 'admin'`
         );
 
-        // HTML response untuk browser
+        // ===============================================
+        // 7. GENERATE HTML RESPONSE
+        // ===============================================
         const htmlResponse = `
         <!DOCTYPE html>
         <html>
@@ -645,6 +778,7 @@ Created: ${verifyResult.rows[0][3]}
     } catch (error) {
         console.error('Setup admin error:', error);
 
+        // Error response dengan troubleshooting info
         const errorHtml = `
         <!DOCTYPE html>
         <html>
@@ -688,16 +822,15 @@ Created: ${verifyResult.rows[0][3]}
     }
 });
 
-// ==============================
-// ADMIN ENDPOINTS
-// ==============================
-
-// 1. ADMIN LOGIN ENDPOINT
+// ===============================================
+// BAGIAN 21: ADMIN LOGIN ENDPOINT
+// ===============================================
 app.post('/admin/login', async (req, res) => {
     const { username, password } = req.body;
 
     console.log('🔐 Admin login attempt:', { username, password: '***' });
 
+    // Validasi input
     if (!username || !password) {
         return res.status(400).json({
             success: false,
@@ -710,7 +843,9 @@ app.post('/admin/login', async (req, res) => {
         connection = await oracledb.getConnection(dbConfig);
         console.log('✅ Database connection established');
 
-        // Query SIMPLIFIED - tanpa full_name
+        // ===============================================
+        // QUERY ADMIN USER
+        // ===============================================
         const result = await connection.execute(
             `SELECT id, username, password_hash, is_active, created_at
              FROM admin_users
@@ -732,7 +867,9 @@ app.post('/admin/login', async (req, res) => {
         const admin = result.rows[0];
         console.log('👤 Admin found:', { id: admin.ID, username: admin.USERNAME });
 
-        // Verify password dengan bcrypt
+        // ===============================================
+        // VERIFY PASSWORD DENGAN BCRYPT
+        // ===============================================
         let isValidPassword = false;
         try {
             isValidPassword = await bcrypt.compare(password, admin.PASSWORD_HASH);
@@ -753,17 +890,21 @@ app.post('/admin/login', async (req, res) => {
             });
         }
 
-        // Generate JWT token
+        // ===============================================
+        // GENERATE JWT TOKEN
+        // ===============================================
         const token = jwt.sign(
             {
                 id: admin.ID,
                 username: admin.USERNAME
             },
             JWT_SECRET,
-            { expiresIn: '24h' }
+            { expiresIn: '24h' } // Token berlaku 24 jam
         );
 
-        // Log login activity
+        // ===============================================
+        // LOG LOGIN ACTIVITY
+        // ===============================================
         try {
             await connection.execute(
                 `INSERT INTO admin_login_logs (admin_id, login_time, ip_address, status)
@@ -780,6 +921,7 @@ app.post('/admin/login', async (req, res) => {
 
         console.log('✅ Login successful for:', admin.USERNAME);
 
+        // Response sukses dengan token
         res.json({
             success: true,
             token: token,
@@ -806,12 +948,15 @@ app.post('/admin/login', async (req, res) => {
     }
 });
 
-// 2. VERIFY ADMIN TOKEN
+// ===============================================
+// BAGIAN 22: VERIFY ADMIN TOKEN ENDPOINT
+// ===============================================
 app.get('/admin/verify', verifyAdminToken, async (req, res) => {
     let connection;
     try {
         connection = await oracledb.getConnection(dbConfig);
 
+        // Verify admin masih aktif di database
         const result = await connection.execute(
             `SELECT id, username, created_at
              FROM admin_users
@@ -847,32 +992,37 @@ app.get('/admin/verify', verifyAdminToken, async (req, res) => {
     }
 });
 
-// 3. DASHBOARD STATS
+// ===============================================
+// BAGIAN 23: DASHBOARD STATISTICS ENDPOINT
+// ===============================================
 app.get('/admin/stats', verifyAdminToken, async (req, res) => {
     let connection;
     try {
         connection = await oracledb.getConnection(dbConfig);
 
-        // Get total reservasi
+        // Query berbagai statistik untuk dashboard
+        
+        // Total reservasi
         const reservasiResult = await connection.execute(
             `SELECT COUNT(*) as total FROM RESERVASI`
         );
 
-        // Get pending reservasi
+        // Reservasi pending
         const pendingResult = await connection.execute(
             `SELECT COUNT(*) as pending FROM RESERVASI WHERE STATUS = 'pending' OR STATUS IS NULL`
         );
 
-        // Get total kritik saran
+        // Total kritik saran
         const kritikResult = await connection.execute(
             `SELECT COUNT(*) as total FROM KRITIKSARAN`
         );
 
-        // Get total kontak
+        // Total kontak
         const kontakResult = await connection.execute(
             `SELECT COUNT(*) as total FROM KONTAK`
         );
 
+        // Response dengan statistik
         res.json({
             totalReservasi: reservasiResult.rows[0][0] || 0,
             pendingReservasi: pendingResult.rows[0][0] || 0,
@@ -894,12 +1044,17 @@ app.get('/admin/stats', verifyAdminToken, async (req, res) => {
     }
 });
 
-// 4. RESERVASI MANAGEMENT
+// ===============================================
+// BAGIAN 24: ADMIN RESERVASI MANAGEMENT
+// ===============================================
+
+// GET - Ambil semua data reservasi
 app.get('/admin/reservasi', verifyAdminToken, async (req, res) => {
     let connection;
     try {
         connection = await oracledb.getConnection(dbConfig);
 
+        // Query semua reservasi dengan informasi lengkap
         const result = await connection.execute(
             `SELECT NAMA, ALAMAT, ALAMATEMAIL, NOMORHP, JUMLAHORANG,
                     CHECKIN, JAMCHECKIN, CHECKOUT, JAMCHECKOUT,
@@ -915,6 +1070,7 @@ app.get('/admin/reservasi', verifyAdminToken, async (req, res) => {
 
         console.log('📊 Reservasi query result:', result.rows.length, 'rows found');
 
+        // Format data untuk frontend
         const reservasi = result.rows.map(row => ({
             id: row.ID,
             nama: row.NAMA,
@@ -951,13 +1107,14 @@ app.get('/admin/reservasi', verifyAdminToken, async (req, res) => {
     }
 });
 
-// Update reservasi status
+// PUT - Update status reservasi
 app.put('/admin/reservasi/:id/status', verifyAdminToken, async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
     console.log('🔄 Update reservasi status:', { id, status });
 
+    // Validasi status yang diperbolehkan
     if (!['pending', 'accepted', 'rejected'].includes(status)) {
         return res.status(400).json({ error: 'Status tidak valid' });
     }
@@ -966,7 +1123,9 @@ app.put('/admin/reservasi/:id/status', verifyAdminToken, async (req, res) => {
     try {
         connection = await oracledb.getConnection(dbConfig);
 
-        // Get specific record first berdasarkan posisi
+        // ===============================================
+        // FIND SPECIFIC RECORD BERDASARKAN POSISI
+        // ===============================================
         const selectResult = await connection.execute(
             `SELECT NAMA, ALAMATEMAIL, CHECKIN, CHECKOUT, PILIHANVILA
              FROM (
@@ -985,7 +1144,9 @@ app.put('/admin/reservasi/:id/status', verifyAdminToken, async (req, res) => {
 
         const reservasiData = selectResult.rows[0];
 
-        // Update berdasarkan kombinasi unik field
+        // ===============================================
+        // UPDATE STATUS BERDASARKAN UNIQUE COMBINATION
+        // ===============================================
         const result = await connection.execute(
             `UPDATE RESERVASI
              SET STATUS = :status,
@@ -1035,7 +1196,7 @@ app.put('/admin/reservasi/:id/status', verifyAdminToken, async (req, res) => {
     }
 });
 
-// Delete reservasi
+// DELETE - Hapus reservasi
 app.delete('/admin/reservasi/:id', verifyAdminToken, async (req, res) => {
     const { id } = req.params;
 
@@ -1043,7 +1204,7 @@ app.delete('/admin/reservasi/:id', verifyAdminToken, async (req, res) => {
     try {
         connection = await oracledb.getConnection(dbConfig);
 
-        // Get specific record first
+        // Find specific record berdasarkan posisi
         const selectResult = await connection.execute(
             `SELECT NAMA, ALAMATEMAIL, CHECKIN, CHECKOUT, PILIHANVILA
              FROM (
@@ -1062,7 +1223,7 @@ app.delete('/admin/reservasi/:id', verifyAdminToken, async (req, res) => {
 
         const reservasiData = selectResult.rows[0];
 
-        // Delete berdasarkan kombinasi unik field
+        // Delete berdasarkan kombinasi unique fields
         const result = await connection.execute(
             `DELETE FROM RESERVASI
              WHERE NAMA = :nama
@@ -1104,13 +1265,17 @@ app.delete('/admin/reservasi/:id', verifyAdminToken, async (req, res) => {
     }
 });
 
-// 5. KRITIK SARAN MANAGEMENT - FIXED untuk CLOB Oracle
+// ===============================================
+// BAGIAN 25: ADMIN KRITIK SARAN MANAGEMENT
+// ===============================================
+
+// GET - Ambil semua kritik saran
 app.get('/admin/kritik-saran', verifyAdminToken, async (req, res) => {
     let connection;
     try {
         connection = await oracledb.getConnection(dbConfig);
 
-        // Simple query tanpa CASE WHEN untuk CLOB
+        // Query kritik saran dengan handling CLOB untuk Oracle
         const result = await connection.execute(
             `SELECT ID, NAMA, JUDUL, KRITIKSARAN
              FROM KRITIKSARAN
@@ -1119,19 +1284,20 @@ app.get('/admin/kritik-saran', verifyAdminToken, async (req, res) => {
             {
                 outFormat: oracledb.OUT_FORMAT_OBJECT,
                 fetchInfo: {
-                    KRITIKSARAN: { type: oracledb.STRING }
+                    KRITIKSARAN: { type: oracledb.STRING } // Convert CLOB to STRING
                 }
             }
         );
 
         console.log('📊 Kritik saran query result:', result.rows.length, 'rows found');
 
+        // Format data untuk frontend
         const kritikSaran = result.rows.map(row => ({
             id: row.ID,
             nama: row.NAMA,
             judul: row.JUDUL,
             kritikSaran: row.KRITIKSARAN || 'No content',
-            tanggal: new Date() // Default date since no created_at
+            tanggal: new Date() // Default date karena tidak ada created_at
         }));
 
         console.log('📤 Sending kritik saran data:', kritikSaran.length, 'records');
@@ -1151,7 +1317,7 @@ app.get('/admin/kritik-saran', verifyAdminToken, async (req, res) => {
     }
 });
 
-// Delete kritik saran
+// DELETE - Hapus kritik saran
 app.delete('/admin/kritik-saran/:id', verifyAdminToken, async (req, res) => {
     const { id } = req.params;
 
@@ -1189,13 +1355,17 @@ app.delete('/admin/kritik-saran/:id', verifyAdminToken, async (req, res) => {
     }
 });
 
-// 6. KONTAK MANAGEMENT - FIXED untuk CLOB Oracle
+// ===============================================
+// BAGIAN 26: ADMIN KONTAK MANAGEMENT
+// ===============================================
+
+// GET - Ambil semua data kontak
 app.get('/admin/kontak', verifyAdminToken, async (req, res) => {
     let connection;
     try {
         connection = await oracledb.getConnection(dbConfig);
 
-        // Simple query tanpa CASE WHEN untuk CLOB
+        // Query kontak dengan handling CLOB untuk Oracle
         const result = await connection.execute(
             `SELECT ID, NAMA, ALAMATEMAIL, SUBJECT, MESSAGE,
                     NVL(CREATED_AT, SYSDATE) as CREATED_AT
@@ -1205,13 +1375,14 @@ app.get('/admin/kontak', verifyAdminToken, async (req, res) => {
             {
                 outFormat: oracledb.OUT_FORMAT_OBJECT,
                 fetchInfo: {
-                    MESSAGE: { type: oracledb.STRING }
+                    MESSAGE: { type: oracledb.STRING } // Convert CLOB to STRING
                 }
             }
         );
 
         console.log('📊 Kontak query result:', result.rows.length, 'rows found');
 
+        // Format data untuk frontend
         const kontak = result.rows.map(row => ({
             id: row.ID,
             nama: row.NAMA,
@@ -1238,7 +1409,7 @@ app.get('/admin/kontak', verifyAdminToken, async (req, res) => {
     }
 });
 
-// Delete kontak
+// DELETE - Hapus kontak
 app.delete('/admin/kontak/:id', verifyAdminToken, async (req, res) => {
     const { id } = req.params;
 
@@ -1276,35 +1447,56 @@ app.delete('/admin/kontak/:id', verifyAdminToken, async (req, res) => {
     }
 });
 
-// ==============================
-// Jalankan server
-// ==============================
+// ===============================================
+// BAGIAN 27: SERVER STARTUP & INFORMATION
+// ===============================================
 app.listen(PORT, () => {
+    // Comprehensive startup logging dengan informasi lengkap
     console.log(`🚀 Server berjalan di http://localhost:${PORT}`);
     console.log(`📊 Database: ${dbConfig.user}@${dbConfig.connectString}`);
     console.log(`🔗 Midtrans Production Mode: ${snap.apiConfig.isProduction}`);
-    console.log(`🔧 Debug endpoints:`);
-    console.log(`   - GET  /debug/db-test`);
-    console.log(`   - GET  /debug/setup-admin`);
-    console.log(`🔐 Admin endpoints:`);
-    console.log(`   - POST /admin/login`);
-    console.log(`   - GET  /admin/verify`);
-    console.log(`   - GET  /admin/stats`);
-    console.log(`   - GET  /admin/reservasi`);
-    console.log(`   - GET  /admin/kritik-saran`);
-    console.log(`   - GET  /admin/kontak`);
-    console.log(`💳 Midtrans Payment endpoints:`);
-    console.log(`   - GET  /pembayaran (menampilkan form pembayaran, pastikan public/payment.html ada)`);
-    console.log(`   - POST /api/payment (membuat transaksi Midtrans)`);
-    console.log(`   - POST /api/midtrans-notification (handler notifikasi Midtrans)`);
-    console.log(`📝 Form endpoints:`);
-    console.log(`   - POST /reservasi`);
-    console.log(`   - POST /kritiksaran`);
-    console.log(`   - POST /kontakkami`);
-    console.log(`   - GET  /check-availability (UPDATED: only accepted)`);
-    console.log(`   - GET  /unavailable-dates (UPDATED: only accepted)`);
-    console.log(`🎯 Status Logic:`);
-    console.log(`   - Pending: Tidak tampil di ketersediaan`);
-    console.log(`   - Accepted: Tampil di ketersediaan (villa unavailable)`);
-    console.log(`   - Rejected: Tidak tampil di ketersediaan`);
+    
+    // console.log(`🔧 Debug endpoints:`);
+    // console.log(`   - GET  /debug/db-test`);
+    // console.log(`   - GET  /debug/setup-admin`);
+    
+    // console.log(`🔐 Admin endpoints:`);
+    // console.log(`   - POST /admin/login`);
+    // console.log(`   - GET  /admin/verify`);
+    // console.log(`   - GET  /admin/stats`);
+    // console.log(`   - GET  /admin/reservasi`);
+    // console.log(`   - GET  /admin/kritik-saran`);
+    // console.log(`   - GET  /admin/kontak`);
+    
+    // console.log(`💳 Midtrans Payment endpoints:`);
+    // console.log(`   - GET  /pembayaran (menampilkan form pembayaran, pastikan public/payment.html ada)`);
+    // console.log(`   - POST /api/payment (membuat transaksi Midtrans)`);
+    // console.log(`   - POST /api/midtrans-notification (handler notifikasi Midtrans)`);
+    
+    // console.log(`📝 Form endpoints:`);
+    // console.log(`   - POST /reservasi`);
+    // console.log(`   - POST /kritiksaran`);
+    // console.log(`   - POST /kontakkami`);
+    // console.log(`   - GET  /check-availability (UPDATED: only accepted)`);
+    // console.log(`   - GET  /unavailable-dates (UPDATED: only accepted)`);
+    
+    // console.log(`🎯 Status Logic:`);
+    // console.log(`   - Pending: Tidak tampil di ketersediaan`);
+    // console.log(`   - Accepted: Tampil di ketersediaan (villa unavailable)`);
+    // console.log(`   - Rejected: Tidak tampil di ketersediaan`);
 });
+
+// ===============================================
+// RINGKASAN ARSITEKTUR SISTEM:
+// ===============================================
+// 1. **PUBLIC API** - Form reservasi, kontak, kritik saran
+// 2. **AVAILABILITY SYSTEM** - Cek ketersediaan dengan status logic
+// 3. **ADMIN PANEL** - CRUD operations dengan JWT authentication
+// 4. **PAYMENT GATEWAY** - Integrasi Midtrans untuk pembayaran
+// 5. **DATABASE** - Oracle DB dengan proper connection handling
+// 6. **SECURITY** - bcrypt password hashing, JWT tokens
+// 7. **FILE UPLOAD** - Multer untuk handling bukti DP
+// 8. **ERROR HANDLING** - Comprehensive error handling di semua endpoint
+// 9. **LOGGING** - Detailed console logging untuk debugging
+// 10. **ANTI-CACHE** - Headers untuk memastikan data fresh
+// ===============================================

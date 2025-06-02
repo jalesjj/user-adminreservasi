@@ -5,7 +5,7 @@ const midtransClient = require('midtrans-client');
 // Konfigurasi Midtrans Snap
 let snap = new midtransClient.Snap({
     isProduction: false, // Ubah ke true jika sudah live
-    serverKey: 'SB-Mid-server-TY4yQMLqtfHkDspOXihruzW-'
+    serverKey: 'SB-Mid-server-JznZpwIa4JjyvETA_yWcRh-R'
 });
 
 // POST /payment - Membuat transaksi Midtrans

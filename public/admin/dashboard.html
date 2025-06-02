@@ -579,7 +579,7 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
                     <a id="download-link" class="btn btn-primary" target="_blank">
-                        <i class="fas fa-download"></i> Download
+                        <i class="fas"></i> lihat
                     </a>
                 </div>
             </div>
@@ -737,15 +737,15 @@
                         if (isImage) {
                             buktiDPDisplay = `
                                 <img src="/uploads/${reservasi.buktiDP}" 
-                                     class="bukti-dp-thumbnail" 
-                                     onclick="viewBuktiDP('${reservasi.buktiDP}', '${reservasi.nama}')"
-                                     alt="Bukti DP" title="Klik untuk melihat">
+                                    class="bukti-dp-thumbnail" 
+                                    onclick="viewBuktiDP('${reservasi.buktiDP}', '${reservasi.nama}')"
+                                    alt="Bukti DP" title="Klik untuk melihat">
                             `;
                         } else {
                             buktiDPDisplay = `
                                 <i class="fas fa-file-pdf" style="font-size: 24px; color: #dc3545; cursor: pointer;" 
-                                   onclick="viewBuktiDP('${reservasi.buktiDP}', '${reservasi.nama}')" 
-                                   title="Klik untuk melihat PDF"></i>
+                                    onclick="viewBuktiDP('${reservasi.buktiDP}', '${reservasi.nama}')" 
+                                    title="Klik untuk melihat PDF"></i>
                             `;
                         }
                     }
@@ -858,9 +858,6 @@
                         <td>${truncateText(kritik.kritikSaran, 50)}</td>
                         <td>${formatDate(kritik.tanggal)}</td>
                         <td>
-                            <button class="btn-action btn-edit" onclick="editKritikSaran(${kritik.id})">
-                                <i class="fas fa-edit"></i>
-                            </button>
                             <button class="btn-action btn-delete" onclick="deleteKritikSaran(${kritik.id})">
                                 <i class="fas fa-trash"></i>
                             </button>
@@ -912,9 +909,7 @@
                         <td>${truncateText(kontak.message, 50)}</td>
                         <td>${formatDate(kontak.tanggal)}</td>
                         <td>
-                            <button class="btn-action btn-edit" onclick="editKontak(${kontak.id})">
-                                <i class="fas fa-edit"></i>
-                            </button>
+                            
                             <button class="btn-action btn-delete" onclick="deleteKontak(${kontak.id})">
                                 <i class="fas fa-trash"></i>
                             </button>
